@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import random
 import sys
 import platform
 import threading
@@ -10,7 +11,7 @@ import pickle
 import time
 import queue
 import uuid
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Dict, List
 
 import zmq
 import math
@@ -28,6 +29,11 @@ from parsl.executors.high_throughput.errors import WorkerLost
 from parsl.executors.high_throughput.probe import probe_addresses
 from parsl.multiprocessing import SpawnContext
 from parsl.serialize import unpack_res_spec_apply_message, serialize
+from parsl.executors.high_throughput.mpi_resource_management import (
+    MPIResourceTracker,
+    MPIResourceUnavailable
+)
+from parsl.executors.high_throughput.mpi_prefix_composer import compose_all, VALID_LAUNCHERS
 
 HEARTBEAT_CODE = (2 ** 32) - 1
 
@@ -63,6 +69,8 @@ class Manager:
                  heartbeat_period,
                  poll_period,
                  cpu_affinity,
+                 enable_mpi_mode: bool = False,
+                 mpi_launcher: str = "mpiexec",
                  available_accelerators: Sequence[str]):
         """
         Parameters
@@ -118,6 +126,13 @@ class Manager:
         available_accelerators: list of str
             List of accelerators available to the workers.
 
+        enable_mpi_mode: bool
+            When set to true, the manager assumes ownership of the batch job and each worker
+            claims a subset of nodes from a shared pool to execute multi-node mpi tasks. Node
+            info is made available to workers via env vars.
+
+        mpi_launcher: str
+            Set to one of the supported MPI launchers: ("srun", "aprun", "mpiexec")
         """
 
         logger.info("Manager started")
@@ -154,6 +169,9 @@ class Manager:
         self.uid = uid
         self.block_id = block_id
 
+        self.enable_mpi_mode = enable_mpi_mode
+        self.mpi_node_tracker: Optional[MPIResourceTracker] = None
+
         if os.environ.get('PARSL_CORES'):
             cores_on_node = int(os.environ['PARSL_CORES'])
         else:
@@ -182,7 +200,12 @@ class Manager:
         self.pending_task_queue = SpawnContext.Queue()
         self.pending_result_queue = SpawnContext.Queue()
         self.ready_worker_count = SpawnContext.Value("i", 0)
-
+        self.mpi_launcher = mpi_launcher
+        if self.enable_mpi_mode:
+            self.mpi_node_tracker = MPIResourceTracker(
+                nodes_q=SpawnContext.Queue(),
+                mpi_launcher=self.mpi_launcher,
+            )
         self.max_queue_size = self.prefetch_capacity + self.worker_count
 
         self.tasks_per_round = 1
@@ -492,6 +515,7 @@ class Manager:
                 os.getpid(),
                 args.logdir,
                 args.debug,
+                self.mpi_node_tracker,
             ),
             name="HTEX-Worker-{}".format(worker_id),
         )
@@ -499,7 +523,13 @@ class Manager:
         return p
 
 
-def execute_task(bufs):
+def update_resource_spec_env_vars(mpi_launcher: str, resource_spec: Dict, node_info: List[str]) -> None:
+    prefix_table = compose_all(mpi_launcher, resource_spec=resource_spec, node_hostnames=node_info)
+    for key in prefix_table:
+        os.environ[key] = prefix_table[key]
+
+
+def execute_task(bufs, mpi_node_tracker: Optional[MPIResourceTracker]):
     """Deserialize the buffer and execute the task.
 
     Returns the result or throws exception.
@@ -509,6 +539,19 @@ def execute_task(bufs):
 
     f, args, kwargs, resource_spec = unpack_res_spec_apply_message(bufs, user_ns, copy=False)
 
+    nodes_for_task: Optional[list[str]] = None
+    for varname in resource_spec:
+        envname = "PARSL_" + str(varname).upper()
+        os.environ[envname] = str(resource_spec[varname])
+
+    if resource_spec.get('NUM_NODES') and mpi_node_tracker:
+        logger.warning(f"TODO: Requesting {resource_spec['NUM_NODES']} nodes")
+        worker_id = os.environ['PARSL_WORKER_RANK']
+        nodes_for_task = mpi_node_tracker.get_nodes(resource_spec['NUM_NODES'])
+        logger.warning(f"TODO: Successfully provisioned nodes: {nodes_for_task}")
+        update_resource_spec_env_vars(mpi_node_tracker.mpi_launcher,
+                                      resource_spec=resource_spec,
+                                      node_info=nodes_for_task)
     # We might need to look into callability of the function from itself
     # since we change it's name in the new namespace
     prefix = "parsl_"
@@ -517,14 +560,20 @@ def execute_task(bufs):
     kwargname = prefix + "kwargs"
     resultname = prefix + "result"
 
-    user_ns.update({fname: f,
-                    argname: args,
-                    kwargname: kwargs,
-                    resultname: resultname})
+    try:
+        user_ns.update({fname: f,
+                        argname: args,
+                        kwargname: kwargs,
+                        resultname: resultname})
 
-    code = "{0} = {1}(*{2}, **{3})".format(resultname, fname,
-                                           argname, kwargname)
-    exec(code, user_ns, user_ns)
+        code = "{0} = {1}(*{2}, **{3})".format(resultname, fname,
+                                               argname, kwargname)
+        exec(code, user_ns, user_ns)
+    finally:
+        if nodes_for_task:
+            logger.info(f"Relinquishing nodes: {len(nodes_for_task)}")
+            mpi_node_tracker.return_nodes(nodes_for_task)
+
     return user_ns.get(resultname)
 
 
@@ -545,6 +594,7 @@ def worker(
     manager_pid: int,
     logdir: str,
     debug: bool,
+    mpi_node_tracker: Optional[MPIResourceTracker]
 ):
     """
 
@@ -646,8 +696,15 @@ def worker(
         worker_enqueued = False
 
         try:
-            result = execute_task(req['buffer'])
+            result = execute_task(req['buffer'], mpi_node_tracker=mpi_node_tracker)
             serialized_result = serialize(result, buffer_threshold=1000000)
+        except MPIResourceUnavailable:
+            # Pop task to the back of queue if resources are not available
+            time.sleep(random.randint(1, 10))
+            task_queue.put(req)
+            logger.warning("MPI Resource Unavailable, putting task back")
+            continue
+
         except Exception as e:
             logger.info('Caught an exception: {}'.format(e))
             result_package = {'type': 'result', 'task_id': tid, 'exception': serialize(RemoteExceptionWrapper(*sys.exc_info()))}
@@ -734,6 +791,10 @@ if __name__ == "__main__":
                         help="Whether/how workers should control CPU affinity.")
     parser.add_argument("--available-accelerators", type=str, nargs="*",
                         help="Names of available accelerators")
+    parser.add_argument("--enable_mpi_mode", action='store_true',
+                        help="Enable MPI mode")
+    parser.add_argument("--mpi-launcher", type=str, choices=VALID_LAUNCHERS,
+                        help="MPI launcher to use iff enable_mpi_mode=true")
 
     args = parser.parse_args()
 
@@ -762,6 +823,8 @@ if __name__ == "__main__":
         logger.info("Heartbeat period: {}".format(args.hb_period))
         logger.info("CPU affinity: {}".format(args.cpu_affinity))
         logger.info("Accelerators: {}".format(" ".join(args.available_accelerators)))
+        logger.info("enable_mpi_mode: {}".format(args.enable_mpi_mode))
+        logger.info("mpi_launcher: {}".format(args.mpi_launcher))
 
         manager = Manager(task_port=args.task_port,
                           result_port=args.result_port,
@@ -777,6 +840,8 @@ if __name__ == "__main__":
                           heartbeat_period=int(args.hb_period),
                           poll_period=int(args.poll),
                           cpu_affinity=args.cpu_affinity,
+                          enable_mpi_mode=args.enable_mpi_mode,
+                          mpi_launcher=args.mpi_launcher,
                           available_accelerators=args.available_accelerators)
         manager.start()
 
