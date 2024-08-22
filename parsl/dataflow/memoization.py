@@ -6,7 +6,7 @@ import os
 import pickle
 import threading
 from functools import lru_cache, singledispatch
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence
 
 import typeguard
 
@@ -164,13 +164,13 @@ class Memoizer:
     def close(self) -> None:
         raise NotImplementedError
 
-    def update_memo(self, task: TaskRecord, r: Future[Any]) -> None:
+    def update_memo(self, task: TaskRecord, r: Future) -> None:
         raise NotImplementedError
 
-    def checkpoint(self, tasks: Sequence[TaskRecord]) -> str:
+    def checkpoint(self, tasks: Sequence[TaskRecord]) -> None:
         raise NotImplementedError
 
-    def check_memo(self, task: TaskRecord) -> Optional[Future[Any]]:
+    def check_memo(self, task: TaskRecord) -> Optional[Future]:
         raise NotImplementedError
 
 
@@ -242,7 +242,7 @@ class BasicMemoizer(Memoizer):
     def close(self) -> None:
         pass   # nothing to close but more should move here
 
-    def check_memo(self, task: TaskRecord) -> Optional[Future[Any]]:
+    def check_memo(self, task: TaskRecord) -> Optional[Future]:
         """Create a hash of the task and its inputs and check the lookup table for this hash.
 
         If present, the results are returned.
@@ -277,7 +277,7 @@ class BasicMemoizer(Memoizer):
         assert isinstance(result, Future) or result is None
         return result
 
-    def hash_lookup(self, hashsum: str) -> Future[Any]:
+    def hash_lookup(self, hashsum: str) -> Future:
         """Lookup a hash in the memoization table.
 
         Args:
@@ -291,7 +291,7 @@ class BasicMemoizer(Memoizer):
         """
         return self.memo_lookup_table[hashsum]
 
-    def update_memo(self, task: TaskRecord, r: Future[Any]) -> None:
+    def update_memo(self, task: TaskRecord, r: Future) -> None:
         """Updates the memoization lookup table with the result from a task.
 
         Args:
@@ -316,7 +316,7 @@ class BasicMemoizer(Memoizer):
             logger.debug(f"Storing app cache entry {task['hashsum']} with result from task {task_id}")
         self.memo_lookup_table[task['hashsum']] = r
 
-    def _load_checkpoints(self, checkpointDirs: Sequence[str]) -> Dict[str, Future[Any]]:
+    def _load_checkpoints(self, checkpointDirs: Sequence[str]) -> Dict[str, Future]:
         """Load a checkpoint file into a lookup table.
 
         The data being loaded from the pickle file mostly contains input
@@ -388,7 +388,7 @@ class BasicMemoizer(Memoizer):
         else:
             return {}
 
-    def checkpoint(self, tasks: Sequence[TaskRecord]) -> str:
+    def checkpoint(self, tasks: Sequence[TaskRecord]) -> None:
         """Checkpoint the dfk incrementally to a checkpoint file.
 
         When called, every task that has been completed yet not
@@ -456,8 +456,6 @@ class BasicMemoizer(Memoizer):
                     logger.debug("No tasks checkpointed in this pass.")
             else:
                 logger.info("Done checkpointing {} tasks".format(count))
-
-            return checkpoint_dir
 
     def filter_for_checkpoint(self, app_fu: AppFuture) -> bool:
         """Overridable method to decide if an entry should be checkpointed"""
