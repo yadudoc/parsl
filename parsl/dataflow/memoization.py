@@ -161,6 +161,9 @@ class Memoizer:
     def start(self, *, dfk: DataFlowKernel, memoize: bool = True, checkpoint_files: Sequence[str], run_dir: str) -> None:
         raise NotImplementedError
 
+    def close(self) -> None:
+        raise NotImplementedError
+
     def update_memo(self, task: TaskRecord, r: Future[Any]) -> None:
         raise NotImplementedError
 
@@ -235,6 +238,9 @@ class BasicMemoizer(Memoizer):
         else:
             logger.info("App caching disabled for all apps")
             self.memo_lookup_table = {}
+
+    def close(self) -> None:
+        pass   # nothing to close but more should move here
 
     def check_memo(self, task: TaskRecord) -> Optional[Future[Any]]:
         """Create a hash of the task and its inputs and check the lookup table for this hash.
