@@ -1323,7 +1323,7 @@ class DataFlowKernel:
 
         logger.info("DFK cleanup complete")
 
-    def checkpoint(self, tasks: Optional[Sequence[TaskRecord]] = None) -> str:
+    def checkpoint(self, tasks: Optional[Sequence[TaskRecord]] = None) -> None:
         """Checkpoint the dfk incrementally to a checkpoint file.
 
         When called, every task that has been completed yet not
@@ -1390,8 +1390,6 @@ class DataFlowKernel:
                     logger.debug("No tasks checkpointed in this pass.")
             else:
                 logger.info("Done checkpointing {} tasks".format(count))
-
-            return checkpoint_dir
 
     def _load_checkpoints(self, checkpointDirs: Sequence[str]) -> Dict[str, Future[Any]]:
         """Load a checkpoint file into a lookup table.
