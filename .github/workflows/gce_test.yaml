@@ -1,0 +1,82 @@
+name: Parsl
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  main-test-suite:
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Collect Job Information
+      id: job-info
+      run: |
+        echo "Python Version: ${{ matrix.python-version }}" >> ci_job_info.txt
+        echo "CI Triggering Event: ${{ github.event_name }}" >> ci_job_info.txt
+        echo "Triggering Git Ref: ${{ github.ref }}" >> ci_job_info.txt
+        echo "Triggering Git SHA: ${{ github.sha }}" >> ci_job_info.txt
+        echo "Workflow Run: ${{ github.run_number }}" >> ci_job_info.txt
+        echo "Workflow Attempt: ${{ github.run_attempt }}" >> ci_job_info.txt
+        as_ascii="$(echo "${{ github.ref_name }}" | perl -pe "s/[^A-z0-9-]+/-/g; s/^-+|-+\$//g; s/--+/-/g;")"
+        echo "as-ascii=$as_ascii" >> $GITHUB_OUTPUT
+
+    - name: Non-requirements based install
+      run: |
+        # libpython3.5: make workqueue binary installer happy
+        # mpich: required by radical executor
+        sudo apt-get update -q
+        sudo apt-get install -qy libpython3.5 mpich
+
+    - name: setup virtual env
+      run: |
+        make virtualenv
+        source .venv/bin/activate
+
+    - name: make deps clean_coverage
+      run: |
+        source .venv/bin/activate
+        make deps
+        make clean_coverage
+        pip install globus-compute-endpoint
+
+    - name: start globus_compute_endpoint
+      run: |
+        globus-compute-endpoint configure default
+        globus-compute-endpoint start default
+        export GLOBUS_COMPUTE_ENDPOINT=$(globus-compute-endpoint list | grep prod | cut -c 3-38)
+
+    - name: make test
+      run: |
+        echo $GLOBUS_COMPUTE_ENDPOINT
+        source .venv/bin/activate
+
+        # temporary; until test-matrixification
+        export PARSL_TEST_PRESERVE_NUM_RUNS=7
+
+        make test
+        ln -s .pytest/parsltest-current test_runinfo
+
+    - name: Archive runinfo logs
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: runinfo-${{ matrix.python-version }}-${{ steps.job-info.outputs.as-ascii }}-${{ github.sha }}
+        path: |
+          runinfo/
+          .pytest/
+          ci_job_info.txt
+        compression-level: 9
