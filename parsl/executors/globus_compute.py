@@ -24,6 +24,15 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
     Refer to `globus-compute user documentation <https://globus-compute.readthedocs.io/en/latest/executor.html>`_
     and `reference documentation <https://globus-compute.readthedocs.io/en/latest/reference/executor.html>`_
     for more details.
+
+    .. note::
+       As a remote execution system, Globus Compute relies on serialization to ship
+       tasks and results between the Parsl client side and the remote Globus Compute
+       Endpoint side. Serialization is unreliable across python versions, and
+       wrappers used by Parsl assume identical Parsl versions across on both sides.
+       We recommend using matching Python, Parsl and Globus Compute version on both
+       the client side and the endpoint side for stable behavior.
+
     """
 
     def __init__(
