@@ -88,7 +88,7 @@ Parsl currently supports the following executors:
 These executors cover a broad range of execution requirements. As with other Parsl components, there is a standard interface (ParslExecutor) that can be implemented to add support for other executors.
 
 5. `parsl.executors.globus_compute.GlobusComputeExecutor`: This executor uses `Globus Compute <https://globus-compute.readthedocs.io/en/latest/index.html>`_
-as the execution backend to run functions on remote systems.
+as the execution backend to run tasks on remote systems.
 
 .. note::
    Refer to :ref:`configuration-section` for information on how to configure these executors.

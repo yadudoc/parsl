@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import uuid
 from concurrent.futures import Future
 from typing import Any, Callable, Dict, Optional, Union
@@ -69,8 +70,7 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
             for more info.
 
         label:
-            a label to name the executor; mainly utilized for
-            logging and advanced needs with multiple executors.
+            a label to name the executor
 
         batch_size:
             the maximum number of tasks to coalesce before
@@ -117,12 +117,10 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
         )
 
     def start(self) -> None:
-        """Empty function
-        """
         pass
 
     def submit(self, func: Callable, resource_specification: Dict[str, Any], *args: Any, **kwargs: Any) -> Future:
-        """ Submit fn to globus-compute
+        """ Submit func to globus-compute
 
 
         Parameters
@@ -148,24 +146,21 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
 
         Future
         """
-        self._executor.resource_specification = resource_specification or self.resource_specification
+        res_spec = copy.deepcopy(resource_specification or self.resource_specification)
         # Pop user_endpoint_config since it is illegal in resource_spec for globus_compute
-        self._executor.user_endpoint_config = resource_specification.pop('user_endpoint_config', self.user_endpoint_config)
+        if res_spec:
+            user_endpoint_config = res_spec.pop('user_endpoint_config', self.user_endpoint_config)
+        else:
+            user_endpoint_config = self.user_endpoint_config
+
+        self._executor.resource_specification = res_spec
+        self._executor.user_endpoint_config = user_endpoint_config
         return self._executor.submit(func, *args, **kwargs)
 
-    def shutdown(self, wait=True, *, cancel_futures=False):
+    def shutdown(self):
         """Clean-up the resources associated with the Executor.
 
-        It is safe to call this method several times. Otherwise, no other methods
-        can be called after this one.
-
-        Parameters
-        ----------
-
-        wait: If True, then this method will not return until all pending
-            futures have received results.
-        cancel_futures: If True, then this method will cancel all futures
-            that have not yet registered their tasks with the Compute web services.
-            Tasks cannot be cancelled once they are registered.
+        GCE.shutdown will cancel all futures that have not yet registered with
+        Globus Compute and will not wait for the launched futures to complete.
         """
-        return self._executor.shutdown()
+        return self._executor.shutdown(wait=False, cancel_futures=True)
