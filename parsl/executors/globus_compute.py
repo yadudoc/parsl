@@ -98,6 +98,7 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
         self.batch_size = batch_size
         self.amqp_port = amqp_port
         self.client = client
+        self.executor_kwargs = kwargs
 
         if not _globus_compute_enabled:
             raise OptionalModuleMissing(
@@ -105,20 +106,21 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
                 "GlobusComputeExecutor requires globus-compute-sdk installed"
             )
 
-        self._executor: Executor = Executor(
-            endpoint_id=endpoint_id,
-            task_group_id=task_group_id,
-            resource_specification=resource_specification,
-            user_endpoint_config=user_endpoint_config,
-            label=label,
-            batch_size=batch_size,
-            amqp_port=amqp_port,
-            client=self.client,
-            **kwargs
-        )
 
     def start(self) -> None:
-        pass
+        """ Start the Globus Compute Executor """
+
+        self._executor: Executor = Executor(
+            endpoint_id=self.endpoint_id,
+            task_group_id=self.task_group_id,
+            resource_specification=self.resource_specification,
+            user_endpoint_config=self.user_endpoint_config,
+            label=self.label,
+            batch_size=self.batch_size,
+            amqp_port=self.amqp_port,
+            client=self.client,
+            **self.executor_kwargs
+        )
 
     def submit(self, func: Callable, resource_specification: Dict[str, Any], *args: Any, **kwargs: Any) -> Future:
         """ Submit func to globus-compute
