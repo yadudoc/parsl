@@ -38,7 +38,7 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
 
     def __init__(
             self,
-            endpoint_id: Optional[UUID_LIKE_T] = None,
+            endpoint_id: UUID_LIKE_T,
             task_group_id: Optional[UUID_LIKE_T] = None,
             resource_specification: Optional[Dict[str, Any]] = None,
             user_endpoint_config: Optional[Dict[str, Any]] = None,
@@ -86,7 +86,8 @@ class GlobusComputeExecutor(ParslExecutor, RepresentationMixin):
 
         kwargs:
             Other kwargs listed will be passed through to globus_compute_sdk.Executor
-            as is
+            as is. Refer to `globus-compute docs
+            <https://globus-compute.readthedocs.io/en/latest/reference/executor.html#globus-compute-executor>`_
         """
         super().__init__()
         self.endpoint_id = endpoint_id
