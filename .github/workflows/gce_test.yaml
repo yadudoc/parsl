@@ -65,7 +65,6 @@ jobs:
         engine:
           type: ThreadPoolEngine
           max_workers: 4
-          working_dir: /home/runner/.globus_compute/default/tasks_working_dir
         EOF
         cat /home/runner/.globus_compute/default/config.yaml
         mkdir ~/.globus_compute/default/tasks_working_dir
@@ -77,7 +76,7 @@ jobs:
         GLOBUS_COMPUTE_CLIENT_SECRET: ${{ secrets.GLOBUS_COMPUTE_SECRET_KEY }}
       run: |
         source .venv/bin/activate
-        export GLOBUS_COMPUTE_ENDPOINT=$(globus-compute-endpoint list | grep default | cut -c 3-38)      
+        export GLOBUS_COMPUTE_ENDPOINT=$(globus-compute-endpoint list | grep default | cut -c 3-38) 
         echo "GLOBUS_COMPUTE_ENDPOINT = $GLOBUS_COMPUTE_ENDPOINT"
 
         # temporary; until test-matrixification
