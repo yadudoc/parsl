@@ -35,6 +35,13 @@ jobs:
       run: |
         make virtualenv
         source .venv/bin/activate
+    - name: Non-requirements based install
+      run: |
+        # libpython3.5: make workqueue binary installer happy
+        # mpich: required by radical executor
+        sudo apt-get update -q
+        #sudo apt-get install -qy libpython3.5 mpich
+        sudo apt-get install -qy mpich
 
     - name: make deps clean_coverage
       run: |
