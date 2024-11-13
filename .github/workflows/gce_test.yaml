@@ -37,10 +37,8 @@ jobs:
         source .venv/bin/activate
     - name: Non-requirements based install
       run: |
-        # libpython3.5: make workqueue binary installer happy
         # mpich: required by radical executor
         sudo apt-get update -q
-        #sudo apt-get install -qy libpython3.5 mpich
         sudo apt-get install -qy mpich
 
     - name: make deps clean_coverage
@@ -48,9 +46,9 @@ jobs:
         source .venv/bin/activate
         make deps
         make clean_coverage
-        
-        # Temporary fix, until changes make it into compute releases
-        git clone -b configure_tasks_working_dir https://github.com/globus/globus-compute.git        
+
+        # Temporary fix until fixes make it to a release
+        git clone -b main https://github.com/globus/globus-compute.git
         pip3 install globus-compute/compute_sdk globus-compute/compute_endpoint
 
     - name: start globus_compute_endpoint
