@@ -5,6 +5,8 @@ on:
     types:
       - opened
       - synchronize
+env:
+   PYTHON_VERSION: "3.11"
 
 jobs:
   main-test-suite:
@@ -14,15 +16,15 @@ jobs:
     steps:
     - uses: actions/checkout@master
 
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Collect Job Information
       id: job-info
       run: |
-        echo "Python Version: 3.11" >> ci_job_info.txt
+        echo "Python Version: ${{ env.PYTHON_VERSION }}" >> ci_job_info.txt
         echo "CI Triggering Event: ${{ github.event_name }}" >> ci_job_info.txt
         echo "Triggering Git Ref: ${{ github.ref }}" >> ci_job_info.txt
         echo "Triggering Git SHA: ${{ github.sha }}" >> ci_job_info.txt
