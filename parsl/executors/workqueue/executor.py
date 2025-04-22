@@ -50,6 +50,7 @@ try:
 except ImportError:
     _work_queue_enabled = False
     WORK_QUEUE_DEFAULT_PORT = 0
+    raise
 else:
     _work_queue_enabled = True
 
