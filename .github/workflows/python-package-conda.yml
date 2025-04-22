@@ -1,29 +1,37 @@
-name: Python Package using Conda
-
-on: [push]
+name: WorkQueue and TaskVine tests
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     strategy:
       max-parallel: 5
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.10
+    
+    - name: Set up Python 3.12
       uses: actions/setup-python@v3
       with:
         python-version: '3.12'
+        
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
+        
     - name: Install dependencies
       run: |
-        # conda env update --file environment.yml --name base
         conda install --channel=conda-forge ndcctools mpich mpi4py
+        make deps
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
+        
     - name: Test with pytest
       run: |
         # conda install pytest
