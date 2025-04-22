@@ -31,6 +31,8 @@ jobs:
         make deps
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
+        pytest parsl/tests/ -k "not cleannet" --config parsl/tests/configs/workqueue_ex.py --random-order --durations 10
+        
         
     - name: Test with pytest
       run: |
