@@ -28,7 +28,7 @@ jobs:
         
     - name: Install parsl and dependencies
       run: |
-        conda install --channel=conda-forge ndcctools mpich mpi4py
+        conda install --channel=conda-forge ndcctools mpich mpi4py openssl
         make deps
         pip install .[workqueue]
         export PATH=/usr/share/miniconda/bin/:$PATH
