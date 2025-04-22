@@ -32,20 +32,16 @@ jobs:
         make deps
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
-        echo "CONDA BIN: $CONDA/bin"
-        echo "CONDA PREFIX: $CONDA_PREFIX <END>"
-        echo "CONDA DEFAULT ENV: $CONDA_DEFAULT_ENV <END>"
         which python3
         ls /usr/share/miniconda/bin/
         echo "PATH: $PATH"
-        # which parsl_coprocess.py
-        # pytest parsl/tests/ -k "not cleannet" --config parsl/tests/configs/workqueue_ex.py --random-order --durations 10
+        export PATH=/usr/share/miniconda/bin/:$PATH
+        which parsl_coprocess.py
+        pytest parsl/tests/ -k "not cleannet" --config parsl/tests/configs/workqueue_ex.py --random-order --durations 10
         
         
     - name: Test with pytest
       run: |
-        # conda install pytest
-        # pytest
         export PATH=$CONDA/bin:$PATH
         which parsl_coprocess.py
         which python3
