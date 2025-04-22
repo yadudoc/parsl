@@ -35,7 +35,16 @@ jobs:
         which python3
         echo "PATH: $PATH"
         export PATH=/usr/share/miniconda/bin/:$PATH
-        # which parsl_coprocess.py
+
+    - name: Sanity check
+      run: |
+        echo "PATH: $PATH"
+        echo "Python: " ; which python3
+        ls /usr/share/miniconda/bin | grep parsl_coprocess.py
+        
+        #export PATH=$CONDA/bin:$PATH
+        #which parsl_coprocess.py
+        #which python3
         
     - name: Test with pytest
       run: |
