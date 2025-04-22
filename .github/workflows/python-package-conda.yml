@@ -30,6 +30,7 @@ jobs:
       run: |
         conda install --channel=conda-forge ndcctools mpich mpi4py
         make deps
+        pip install .
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
         python3 -c "import parsl; print(parsl.__version__)"
