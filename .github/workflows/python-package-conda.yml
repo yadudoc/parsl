@@ -32,6 +32,8 @@ jobs:
         make deps
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
+        python3 -c "import parsl; print(parsl.__version__)"
+        
         which python3
         echo "PATH: $PATH"
         export PATH=/usr/share/miniconda/bin/:$PATH
@@ -39,7 +41,7 @@ jobs:
     - name: Sanity check
       run: |
         echo "PATH: $PATH"
-        echo "Python: " ; which python3
+        echo "Python: "; which python3
         find /usr/share/miniconda/ | grep parsl_coprocess.py
         
         #export PATH=$CONDA/bin:$PATH
