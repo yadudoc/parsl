@@ -32,7 +32,10 @@ jobs:
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
         echo "CONDA BIN: $CONDA/bin"
-        echo "CONDA PREFIX: $CONDA_PREFIX"
+        echo "CONDA PREFIX: $CONDA_PREFIX <END>"
+        
+        echo "CONDA DEFAULT ENV: $CONDA_DEFAULT_ENV <END>"
+        which python3
         ls $CONDA_PREFIX
         ls $CONDA_PREFIX/bin
         echo "PATH: $PATH"
