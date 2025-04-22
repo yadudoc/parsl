@@ -31,6 +31,9 @@ jobs:
         make deps        
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
+        echo "CONDA BIN: $CONDA/bin"
+        echo "PATH: $PATH"
+        export PATH=$CONDA/bin:$PATH
         which parsl_coprocess.py
         # pytest parsl/tests/ -k "not cleannet" --config parsl/tests/configs/workqueue_ex.py --random-order --durations 10
         
@@ -39,6 +42,7 @@ jobs:
       run: |
         # conda install pytest
         # pytest
+        export PATH=$CONDA/bin:$PATH
         which parsl_coprocess.py
         which python3
         python3 -c "import ndcctools; print(ndcctools.__file__)"
