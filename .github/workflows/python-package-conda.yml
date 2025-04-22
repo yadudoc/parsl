@@ -33,10 +33,9 @@ jobs:
         python3 -c "import ndcctools; print(ndcctools.__file__)"
         python3 -c "from ndcctools import work_queue; print(work_queue.__version__)"
         which python3
-        ls /usr/share/miniconda/bin/
         echo "PATH: $PATH"
         export PATH=/usr/share/miniconda/bin/:$PATH
-        which parsl_coprocess.py
+        # which parsl_coprocess.py
         pytest parsl/tests/ -k "not cleannet" --config parsl/tests/configs/workqueue_ex.py --random-order --durations 10
         
         
