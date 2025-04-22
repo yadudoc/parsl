@@ -42,6 +42,7 @@ jobs:
         python3 -c "import parsl; print(parsl.__version__)"
         which parsl_coprocess.py
         which python3
+        find /usr/share/miniconda | grep libssl
         
     - name: Run pytest suite for WorkQueue and TaskVine
       run: |
