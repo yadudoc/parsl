@@ -37,7 +37,7 @@ jobs:
         export PATH=/usr/share/miniconda/bin/:$PATH
         # which parsl_coprocess.py
 
-     - name: Testing
+    - name: Testing
         find /usr/share/miniconda/ | grep parsl_coprocess.py 
         # pytest parsl/tests/ -k "not cleannet" --config parsl/tests/configs/workqueue_ex.py --random-order --durations 10
         
