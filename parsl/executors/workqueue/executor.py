@@ -41,8 +41,8 @@ from parsl.utils import setproctitle
 from .errors import WorkQueueFailure, WorkQueueTaskFailure
 
 try:
-    import work_queue as wq
-    from work_queue import (
+    from ndcctools import work_queue as wq
+    from ndcctools.work_queue import (
         WORK_QUEUE_ALLOCATION_MODE_MAX_THROUGHPUT,
         WORK_QUEUE_DEFAULT_PORT,
         WorkQueue,
@@ -50,6 +50,7 @@ try:
 except ImportError:
     _work_queue_enabled = False
     WORK_QUEUE_DEFAULT_PORT = 0
+    raise
 else:
     _work_queue_enabled = True
 
